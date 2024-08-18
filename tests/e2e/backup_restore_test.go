@@ -42,7 +42,6 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 		barmanCloudBackupLogEntry = "Starting barman-cloud-backup"
 	)
 
-	var namespace, clusterName string
 	currentTimestamp := new(string)
 
 	BeforeEach(func() {
@@ -51,24 +50,23 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 		}
 	})
 
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
 	Context("using minio as object storage for backup", Ordered, func() {
 		// This is a set of tests using a minio server deployed in the same
 		// namespace as the cluster. Since each cluster is installed in its
 		// own namespace, they can share the configuration file
-
+		var namespace, clusterName string
 		const (
 			backupFile              = fixturesDir + "/backup/minio/backup-minio.yaml"
 			customQueriesSampleFile = fixturesDir + "/metrics/custom-queries-with-target-databases.yaml"
 		)
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		clusterWithMinioSampleFile := fixturesDir + "/backup/minio/cluster-with-backup-minio.yaml.template"
 
 		BeforeAll(func() {
@@ -517,6 +515,8 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 		const scheduledBackupSampleFile = fixturesDir +
 			"/backup/scheduled_backup_immediate/scheduled-backup-immediate-azure-blob.yaml"
 		backupFile := fixturesDir + "/backup/azure_blob/backup-azure-blob.yaml"
+		var namespace, clusterName string
+
 		BeforeAll(func() {
 			if !IsAKS() {
 				Skip("This test is only run on AKS clusters")
@@ -548,7 +548,14 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 			// Create the cluster
 			AssertCreateCluster(namespace, clusterName, azureBlobSampleFile, env)
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		// We backup and restore a cluster, and verify some expected data to
 		// be there
 		It("backs up and restore a cluster", func() {
@@ -656,6 +663,7 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 			azuriteCaSecName  = "azurite-ca-secret"
 			azuriteTLSSecName = "azurite-tls-secret"
 		)
+		var namespace, clusterName string
 
 		BeforeAll(func() {
 			if !(IsLocal() || IsGKE() || IsOpenshift()) {
@@ -682,7 +690,14 @@ var _ = Describe("Backup and restore", Label(tests.LabelBackupRestore), func() {
 			// Setup Azurite and az cli along with Postgresql cluster
 			prepareClusterBackupOnAzurite(namespace, clusterName, azuriteBlobSampleFile, backupFile, tableName, psqlClientPod)
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("restores a backed up cluster", func() {
 			// Restore backup in a new cluster
 			AssertClusterRestoreWithApplicationDB(namespace, clusterRestoreSampleFile, tableName, psqlClientPod)
@@ -776,7 +791,6 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 		azuriteTLSSecName               = "azurite-tls-secret"
 	)
 
-	var namespace, clusterName string
 	currentTimestamp := new(string)
 
 	BeforeEach(func() {
@@ -785,18 +799,11 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 		}
 	})
 
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
-
 	// Restore cluster using a recovery object store, that is a backup of another cluster,
 	// created by Barman Cloud, and defined via the barmanObjectStore option in the externalClusters section
 	Context("using minio as object storage", Ordered, func() {
+		var namespace, clusterName string
+
 		BeforeAll(func() {
 			if !IsLocal() {
 				Skip("This test is only executed on local")
@@ -834,6 +841,15 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 					return connectionStatus, nil
 				}, 60).Should(BeTrue())
 			})
+		})
+
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 
 		It("restores a cluster from barman object using 'barmanObjectStore' option in 'externalClusters' section", func() {
@@ -955,6 +971,7 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 
 	Context("using azure blobs as object storage", func() {
 		Context("storage account access authentication", Ordered, func() {
+			var namespace, clusterName string
 			BeforeAll(func() {
 				if !IsAKS() {
 					Skip("This test is only executed on AKS clusters")
@@ -982,7 +999,14 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 				// Create the cluster
 				AssertCreateCluster(namespace, clusterName, clusterSourceFileAzure, env)
 			})
-
+			AfterAll(func() {
+				if CurrentSpecReport().Failed() {
+					env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+				} else {
+					err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
 			It("restores a cluster from barman object using 'barmanObjectStore' option in 'externalClusters' section", func() {
 				// Write a table and some data on the "app" database
 				AssertCreateTestData(namespace, clusterName, tableName, psqlClientPod)
@@ -1039,6 +1063,7 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 		})
 
 		Context("storage account SAS Token authentication", Ordered, func() {
+			var namespace, clusterName string
 			BeforeAll(func() {
 				if !IsAKS() {
 					Skip("This test is only executed on AKS clusters")
@@ -1066,7 +1091,14 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 				// Create the Cluster
 				AssertCreateCluster(namespace, clusterName, clusterSourceFileAzureSAS, env)
 			})
-
+			AfterAll(func() {
+				if CurrentSpecReport().Failed() {
+					env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+				} else {
+					err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
 			It("restores cluster from barman object using 'barmanObjectStore' option in 'externalClusters' section", func() {
 				// Write a table and some data on the "app" database
 				AssertCreateTestData(namespace, clusterName, tableName, psqlClientPod)
@@ -1126,6 +1158,7 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 	})
 
 	Context("using Azurite blobs as object storage", Ordered, func() {
+		var namespace, clusterName string
 		BeforeAll(func() {
 			if IsAKS() {
 				Skip("This test is not run on AKS")
@@ -1161,7 +1194,14 @@ var _ = Describe("Clusters Recovery From Barman Object Store", Label(tests.Label
 				tableName,
 				psqlClientPod)
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("restore cluster from barman object using 'barmanObjectStore' option in 'externalClusters' section", func() {
 			// Restore backup in a new cluster
 			AssertClusterRestoreWithApplicationDB(namespace, externalClusterFileAzurite, tableName, psqlClientPod)

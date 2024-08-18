@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudnative-pg/cloudnative-pg/pkg/fileutils"
 	"os"
 	"path"
 	"path/filepath"
@@ -33,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
-	"github.com/cloudnative-pg/cloudnative-pg/pkg/fileutils"
 	"github.com/cloudnative-pg/cloudnative-pg/pkg/specs"
 	"github.com/cloudnative-pg/cloudnative-pg/pkg/utils"
 	"github.com/cloudnative-pg/cloudnative-pg/pkg/utils/logs"
@@ -56,7 +56,6 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 	)
 	var (
 		clusterName string
-		namespace   string
 		cluster     *apiv1.Cluster
 	)
 
@@ -68,16 +67,7 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 		}
 	})
 
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
-
-	clusterSetup := func(clusterManifest string) {
+	clusterSetup := func(namespace, clusterManifest string) {
 		var err error
 
 		clusterName, err = env.GetResourceNameFromYAML(clusterManifest)
@@ -117,7 +107,7 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 	}
 
 	Context("on a new cluster with tablespaces", Ordered, func() {
-		var backupName string
+		var namespace, backupName string
 		var err error
 		const (
 			clusterManifest = fixturesDir +
@@ -142,7 +132,15 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 			DeferCleanup(func() error {
 				return env.DeleteNamespace(namespace)
 			})
-			clusterSetup(clusterManifest)
+			clusterSetup(namespace, clusterManifest)
+		})
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 
 		It("can verify tablespaces and PVC were created", func() {
@@ -365,7 +363,7 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 	})
 
 	Context("on a new cluster with tablespaces and volumesnapshot support", Ordered, func() {
-		var backupName string
+		var namespace, backupName string
 		var err error
 		var backupObject *apiv1.Backup
 		const (
@@ -404,9 +402,16 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 			DeferCleanup(func() error {
 				return env.DeleteNamespace(namespace)
 			})
-			clusterSetup(clusterManifest)
+			clusterSetup(namespace, clusterManifest)
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can verify tablespaces and PVC were created", func() {
 			AssertClusterHasMountPointsAndVolumesForTablespaces(cluster, 2, testTimeouts[testUtils.Short])
 			AssertClusterHasPvcsAndDataDirsForTablespaces(cluster, testTimeouts[testUtils.Short])
@@ -619,6 +624,7 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 	})
 
 	Context("on a plain cluster with primaryUpdateMethod=restart", Ordered, func() {
+		var namespace string
 		clusterManifest := fixturesDir + "/tablespaces/cluster-without-tablespaces.yaml.template"
 		BeforeAll(func() {
 			var err error
@@ -628,9 +634,16 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 			DeferCleanup(func() error {
 				return env.DeleteNamespace(namespace)
 			})
-			clusterSetup(clusterManifest)
+			clusterSetup(namespace, clusterManifest)
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can update cluster by adding tablespaces", func() {
 			By("adding tablespaces to the spec and patching", func() {
 				cluster, err := env.GetCluster(namespace, clusterName)
@@ -751,16 +764,22 @@ var _ = Describe("Tablespaces tests", Label(tests.LabelTablespaces,
 	})
 
 	Context("on a plain cluster with primaryUpdateMethod=switchover", Ordered, func() {
+		var namespace string
 		clusterManifest := fixturesDir + "/tablespaces/cluster-without-tablespaces.yaml.template"
 		BeforeAll(func() {
 			var err error
 			// Create a cluster in a namespace we'll delete after the test
 			namespace, err = env.CreateUniqueNamespace(namespacePrefix)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() error {
-				return env.DeleteNamespace(namespace)
-			})
-			clusterSetup(clusterManifest)
+			clusterSetup(namespace, clusterManifest)
+		})
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 		It("can update cluster adding tablespaces", func() {
 			By("patch cluster with primaryUpdateMethod=switchover", func() {

@@ -60,14 +60,6 @@ var _ = Describe("Certificates", func() {
 	})
 
 	var namespace, clusterName string
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
 
 	Context("Operator managed mode", Ordered, func() {
 		const (
@@ -116,7 +108,14 @@ var _ = Describe("Certificates", func() {
 			// deleting root CA certificates
 			cleanClusterCertification()
 		})
-
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can authenticate using a Certificate that is generated from the 'kubectl-cnpg' plugin",
 			Label(tests.LabelPlugin), func() {
 				pod := utils.DefaultWebapp(namespace, "app-pod-cert-1",
@@ -248,7 +247,14 @@ var _ = Describe("Certificates", func() {
 		BeforeEach(func() {
 			clusterName = "postgresql-server-cert"
 		})
-
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can authenticate using a Certificate that is generated from the 'kubectl-cnpg' plugin "+
 			"and verify-ca the provided server certificate", Label(tests.LabelPlugin), func() {
 			const namespacePrefix = "server-certificates-e2e"
@@ -296,7 +302,14 @@ var _ = Describe("Certificates", func() {
 		BeforeEach(func() {
 			clusterName = "postgresql-cert"
 		})
-
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can authenticate custom CA to verify client certificates for a cluster",
 			Label(tests.LabelServiceConnectivity), func() {
 				const namespacePrefix = "client-certificates-e2e"
@@ -332,7 +345,14 @@ var _ = Describe("Certificates", func() {
 		BeforeEach(func() {
 			clusterName = "postgresql-client-server-cert"
 		})
-
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can authenticate custom CA to verify both client and server certificates for a cluster",
 			Label(tests.LabelServiceConnectivity), func() {
 				const namespacePrefix = "client-server-certificates-e2e"

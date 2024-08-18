@@ -34,19 +34,9 @@ import (
 
 var _ = Describe("Synchronous Replicas", Label(tests.LabelReplication), func() {
 	const level = tests.Medium
-	var namespace string
 	BeforeEach(func() {
 		if testLevelEnv.Depth < int(level) {
 			Skip("Test depth is lower than the amount requested for this test")
-		}
-	})
-
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
 		}
 	})
 
@@ -90,6 +80,15 @@ var _ = Describe("Synchronous Replicas", Label(tests.LabelReplication), func() {
 	}
 
 	Context("Legacy synchronous replication", func() {
+		var namespace string
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can manage sync replicas", func() {
 			const (
 				namespacePrefix = "legacy-sync-replicas-e2e"
@@ -191,6 +190,15 @@ var _ = Describe("Synchronous Replicas", Label(tests.LabelReplication), func() {
 	})
 
 	Context("Synchronous replication", func() {
+		var namespace string
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can manage quorum/priority based synchronous replication", func() {
 			const (
 				namespacePrefix = "sync-replicas-e2e"

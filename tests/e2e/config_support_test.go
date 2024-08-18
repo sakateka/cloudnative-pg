@@ -55,14 +55,6 @@ var _ = Describe("Config support", Serial, Ordered, Label(tests.LabelDisruptive,
 
 		operatorNamespace = operatorDeployment.GetNamespace()
 	})
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
 
 	AfterAll(func() {
 		if CurrentSpecReport().State.Is(types.SpecStateSkipped) {
@@ -85,6 +77,13 @@ var _ = Describe("Config support", Serial, Ordered, Label(tests.LabelDisruptive,
 
 		err = utils.ReloadOperatorDeployment(env, 120)
 		Expect(err).ToNot(HaveOccurred())
+
+		if CurrentSpecReport().Failed() {
+			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+		} else {
+			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+			Expect(err).ToNot(HaveOccurred())
+		}
 	})
 
 	It("creates the configuration map and secret", func() {

@@ -111,7 +111,7 @@ var _ = Describe("Pod eviction", Serial, Label(tests.LabelDisruptive), func() {
 				Skip("Test depth is lower than the amount requested for this test")
 			}
 		})
-		JustAfterEach(func() {
+		AfterAll(func() {
 			if CurrentSpecReport().Failed() {
 				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
 			} else {
@@ -183,7 +183,7 @@ var _ = Describe("Pod eviction", Serial, Label(tests.LabelDisruptive), func() {
 				Skip("This test is only run on local cluster")
 			}
 		})
-		JustAfterEach(func() {
+		AfterAll(func() {
 			if CurrentSpecReport().Failed() {
 				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
 			} else {

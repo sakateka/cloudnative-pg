@@ -60,14 +60,7 @@ var _ = Describe("Cluster Hibernation with plugin", Label(tests.LabelPlugin), fu
 			Skip("Test depth is lower than the amount requested for this test")
 		}
 	})
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
+
 	Context("hibernate", func() {
 		var err error
 		getPrimaryAndClusterManifest := func(namespace, clusterName string) ([]byte, string) {
@@ -227,7 +220,6 @@ var _ = Describe("Cluster Hibernation with plugin", Label(tests.LabelPlugin), fu
 			}
 			testsUtils.ObjectMatchesAnnotations(&pvcInfo, expectedAnnotation)
 		}
-
 		assertHibernation := func(namespace, clusterName, tableName string) {
 			var beforeHibernationPgWalPvcUID types.UID
 			var beforeHibernationPgDataPvcUID types.UID
@@ -300,6 +292,14 @@ var _ = Describe("Cluster Hibernation with plugin", Label(tests.LabelPlugin), fu
 			AssertDataExpectedCount(namespace, clusterName, tableName, 2, psqlClientPod)
 		}
 
+		AfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		When("cluster setup with PG-WAL volume", func() {
 			It("hibernation process should work", func() {
 				const namespacePrefix = "hibernation-on-with-pg-wal"

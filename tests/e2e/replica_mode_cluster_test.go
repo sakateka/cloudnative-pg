@@ -60,7 +60,6 @@ var _ = Describe("Replica Mode", Label(tests.LabelReplication), func() {
 		replicaUser   = "userTgt"
 	)
 
-	var namespace string
 	var err error
 	BeforeEach(func() {
 		if testLevelEnv.Depth < int(level) {
@@ -68,16 +67,16 @@ var _ = Describe("Replica Mode", Label(tests.LabelReplication), func() {
 		}
 	})
 
-	JustAfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-		} else {
-			err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
-			Expect(err).ToNot(HaveOccurred())
-		}
-	})
-
 	Context("can bootstrap a replica cluster using TLS auth", func() {
+		var namespace string
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("should work", func() {
 			const (
 				replicaClusterSampleTLS = fixturesDir + replicaModeClusterDir + "cluster-replica-tls.yaml.template"
@@ -104,6 +103,15 @@ var _ = Describe("Replica Mode", Label(tests.LabelReplication), func() {
 	})
 
 	Context("can bootstrap a replica cluster using basic auth", func() {
+		var namespace string
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("can be detached from the source cluster", func() {
 			const (
 				replicaClusterSampleBasicAuth = fixturesDir + replicaModeClusterDir + "cluster-replica-basicauth.yaml.template"
@@ -237,6 +245,15 @@ var _ = Describe("Replica Mode", Label(tests.LabelReplication), func() {
 	})
 
 	Context("archive mode set to 'always' on designated primary", func() {
+		var namespace string
+		JustAfterEach(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		It("verifies replica cluster can archive WALs from the designated primary", func() {
 			const (
 				replicaClusterSample   = fixturesDir + replicaModeClusterDir + "cluster-replica-archive-mode-always.yaml.template"
@@ -293,12 +310,21 @@ var _ = Describe("Replica Mode", Label(tests.LabelReplication), func() {
 	})
 
 	Context("can bootstrap a replica cluster from a backup", Ordered, func() {
+
 		const (
 			clusterSample   = fixturesDir + replicaModeClusterDir + "cluster-replica-src-with-backup.yaml.template"
 			namespacePrefix = "replica-cluster-from-backup"
 		)
 		var clusterName string
-
+		var namespace string
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+			} else {
+				err := fileutils.RemoveDirectory("cluster_logs/" + namespace)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
 		BeforeAll(func() {
 			var err error
 			namespace, err = env.CreateUniqueNamespace(namespacePrefix)

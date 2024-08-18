@@ -145,7 +145,7 @@ var _ = Describe("Configuration update", Ordered, Label(tests.LabelClusterMetada
 		})
 	})
 
-	JustAfterEach(func() {
+	AfterAll(func() {
 		if CurrentSpecReport().Failed() {
 			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
 		} else {
@@ -474,7 +474,7 @@ var _ = Describe("Configuration update with primaryUpdateMethod", Label(tests.La
 			"/config_update/primary_update_method/primary-update-restart.yaml.template"
 		var namespace, clusterName string
 
-		JustAfterEach(func() {
+		AfterAll(func() {
 			if CurrentSpecReport().Failed() {
 				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
 			} else {
