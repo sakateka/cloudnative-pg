@@ -17,9 +17,7 @@ limitations under the License.
 package e2e
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -41,11 +39,20 @@ var _ = Describe("Cluster setup", Label(tests.LabelSmoke, tests.LabelBasic), fun
 		clusterName = "postgresql-storage-class"
 		level       = tests.Highest
 	)
+
 	var namespace string
+
 	BeforeEach(func() {
 		if testLevelEnv.Depth < int(level) {
 			Skip("Test depth is lower than the amount requested for this test")
 		}
+	})
+
+	AfterEach(func() {
+		if CurrentSpecReport().Failed() {
+			env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
+		}
+		_ = env.DeleteNamespace(namespace)
 	})
 
 	It("sets up a cluster", func(_ SpecContext) {
@@ -55,36 +62,10 @@ var _ = Describe("Cluster setup", Label(tests.LabelSmoke, tests.LabelBasic), fun
 		// Create a cluster in a namespace we'll delete after the test
 		namespace, err = env.CreateUniqueNamespace(namespacePrefix)
 		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() error {
-			if CurrentSpecReport().Failed() {
-				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-			}
-			return env.DeleteNamespace(namespace)
-		})
 
 		AssertCreateCluster(namespace, clusterName, sampleFile, env)
 		cluster, err := env.GetCluster(namespace, clusterName)
 		Expect(err).ToNot(HaveOccurred())
-
-		var buf bytes.Buffer
-		GinkgoWriter.Println("Putting Tail on the cluster logs")
-		go func() {
-			err = env.TailClusterLogs(cluster, &buf, false)
-			if err != nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "\nError tailing cluster logs: %v\n", err)
-			}
-		}()
-		DeferCleanup(func(_ SpecContext) {
-			if CurrentSpecReport().Failed() {
-				specName := CurrentSpecReport().FullText()
-				capLines := 10
-				GinkgoWriter.Printf("DUMPING tailed Cluster Logs with error/warning (at most %v lines). Failed Spec: %v\n",
-					capLines, specName)
-				GinkgoWriter.Println("================================================================================")
-				saveLogs(&buf, "cluster_logs_", strings.ReplaceAll(specName, " ", "_"), GinkgoWriter, capLines)
-				GinkgoWriter.Println("================================================================================")
-			}
-		})
 
 		By("having three PostgreSQL pods with status ready", func() {
 			podList, err := env.GetClusterPodList(namespace, clusterName)
@@ -107,19 +88,24 @@ var _ = Describe("Cluster setup", Label(tests.LabelSmoke, tests.LabelBasic), fun
 			appUser, appUserPass, err := testsUtils.GetCredentials(
 				clusterName, namespace, apiv1.ApplicationUserSecretSuffix, env)
 			Expect(err).NotTo(HaveOccurred())
-			host, err := testsUtils.GetHostName(namespace, clusterName, env)
-			Expect(err).NotTo(HaveOccurred())
-			query := "CREATE TABLE IF NOT EXISTS test (id bigserial PRIMARY KEY, t text);"
-			_, _, err = testsUtils.RunQueryFromPod(
-				psqlClientPod,
-				host,
+
+			forward, conn, err := testsUtils.ForwardPSQLConnection(
+				env,
+				namespace,
+				cluster.Status.CurrentPrimary,
 				testsUtils.AppDBName,
 				appUser,
 				appUserPass,
-				query,
-				env,
 			)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
+
+			query := "CREATE TABLE IF NOT EXISTS test (id bigserial PRIMARY KEY, t text);"
+			_, err = conn.Exec(query)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = conn.Close()
+			Expect(err).NotTo(HaveOccurred())
+			forward.Stop()
 
 			// We kill the pid 1 process.
 			// The pod should be restarted and the count of the restarts
@@ -148,18 +134,22 @@ var _ = Describe("Cluster setup", Label(tests.LabelSmoke, tests.LabelBasic), fun
 				return int32(-1), nil
 			}, timeout).Should(BeEquivalentTo(restart + 1))
 
-			Eventually(func() (bool, error) {
-				query = "SELECT * FROM test"
-				_, _, err = env.ExecCommandWithPsqlClient(
-					namespace,
-					clusterName,
-					psqlClientPod,
-					apiv1.ApplicationUserSecretSuffix,
-					testsUtils.AppDBName,
-					query,
-				)
-				return err == nil, err
-			}, timeout).Should(BeTrue())
+			forward, conn, err = testsUtils.ForwardPSQLConnection(
+				env,
+				namespace,
+				cluster.Status.CurrentPrimary,
+				testsUtils.AppDBName,
+				appUser,
+				appUserPass,
+			)
+			defer func() {
+				_ = conn.Close()
+				forward.Stop()
+			}()
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = conn.Exec("SELECT * FROM test")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
@@ -169,12 +159,6 @@ var _ = Describe("Cluster setup", Label(tests.LabelSmoke, tests.LabelBasic), fun
 		var err error
 		namespace, err = env.CreateUniqueNamespace(namespacePrefix)
 		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() error {
-			if CurrentSpecReport().Failed() {
-				env.DumpNamespaceObjects(namespace, "out/"+CurrentSpecReport().LeafNodeText+".log")
-			}
-			return env.DeleteNamespace(namespace)
-		})
 
 		By(fmt.Sprintf("having a %v namespace", namespace), func() {
 			// Creating a namespace should be quick
